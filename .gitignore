@@ -1,0 +1,8 @@
+.env
+.venv/
+venv/
+__pycache__/
+node_modules/
+vector_db/
+downloades/
+.env.*
