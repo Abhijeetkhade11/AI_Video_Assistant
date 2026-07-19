@@ -29,6 +29,63 @@ st.set_page_config(
  
 # ─── CSS ────────────────────────────────────────────────────────────────────────
 st.markdown("""
+    <style>
+        /* Radio button labels - bright white */
+        div[data-testid="stRadio"] label span {
+            color: #FFFFFF !important;
+            opacity: 1 !important;
+        }
+
+        /* Radio button text specifically */
+        div[data-testid="stRadio"] label p {
+            color: #FFFFFF !important;
+            opacity: 1 !important;
+            font-weight: 500 !important;
+        }
+
+        /* "RUN ANALYSIS" button text - bright white */
+        div[data-testid="stButton"] button p,
+        div[data-testid="stButton"] button span,
+        div[data-testid="stButton"] button {
+            color: #FFFFFF !important;
+            opacity: 1 !important;
+        }
+
+        /* "YOUTUBE URL OR FILE PATH" label */
+        div[data-testid="stTextInput"] label p {
+            color: #FFFFFF !important;
+            opacity: 1 !important;
+        }
+
+        /* "LANGUAGE" label */
+        div[data-testid="stSelectbox"] label p {
+            color: #FFFFFF !important;
+            opacity: 1 !important;
+        }
+
+        /* "SOURCE TYPE" label */
+        div[data-testid="stRadio"] > label > p {
+            color: #FFFFFF !important;
+            opacity: 1 !important;
+        }
+
+        /* YouTube URL input text - black while typing */
+        div[data-testid="stTextInput"] input {
+        color: #000000 !important;
+        opacity: 1 !important;
+        }
+
+        /* Placeholder text - dark gray for visibility */
+        div[data-testid="stTextInput"] input::placeholder {
+        color: #333333 !important;
+        opacity: 1 !important;
+        }                 
+    </style>
+""", unsafe_allow_html=True)
+
+
+
+st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=DM+Mono:wght@300;400;500&display=swap');
  
@@ -65,9 +122,13 @@ html, body, [class*="css"] {
 [data-testid="stSidebar"] * { color: var(--cream) !important; }
 [data-testid="stSidebar"] label { color: var(--sand) !important; font-size: 0.7rem !important; letter-spacing: 0.08em; text-transform: uppercase; }
 [data-testid="stSidebar"] .stTextInput > div > div > input {
-    background: rgba(255,255,255,0.07) !important; border: 1px solid rgba(255,255,255,0.15) !important;
-    border-radius: 4px !important; color: var(--cream) !important;
-    font-family: 'DM Mono', monospace !important; font-size: 0.78rem !important;
+    background: rgba(255,255,255,0.07) !important;
+    border: 1px solid rgba(255,255,255,0.15) !important;
+    border-radius: 4px !important;
+    color: #000000 !important;
+    font-family: 'DM Mono', monospace !important;
+    font-size: 0.78rem !important;
+}
 }
 [data-testid="stSidebar"] .stTextInput > div > div > input:focus {
     border-color: var(--amber-lt) !important; box-shadow: 0 0 0 2px rgba(212,130,10,0.2) !important;
@@ -76,11 +137,23 @@ html, body, [class*="css"] {
     background: rgba(255,255,255,0.07) !important; border: 1px solid rgba(255,255,255,0.15) !important;
     color: var(--cream) !important; border-radius: 4px !important;
 }
-[data-testid="stSidebar"] .stRadio label { font-size: 0.8rem !important; color: var(--cream) !important; text-transform: none !important; letter-spacing: 0 !important; }
+[data-testid="stSidebar"] .stRadio label { font-size: 0.8rem !important; color: #ffffff !important; text-transform: none !important; letter-spacing: 0 !important; }
 [data-testid="stSidebar"] [data-testid="stFileUploader"] {
     background: rgba(255,255,255,0.04) !important; border: 1px dashed rgba(255,255,255,0.18) !important; border-radius: 6px !important;
 }
-[data-testid="stSidebar"] [data-testid="stFileUploader"] * { color: var(--cream) !important; }
+[data-testid="stSidebar"] [data-testid="stFileUploader"] * { color: #ffffff !important; }
+
+/* Force brighter, bolder white for sidebar option labels and uploader text */
+[data-testid="stSidebar"] div[role="radiogroup"] label,
+[data-testid="stSidebar"] .stRadio label,
+[data-testid="stSidebar"] [data-testid="stFileUploader"] *,
+[data-testid="stSidebar"] .stMarkdown, 
+[data-testid="stSidebar"] .stMarkdown * {
+    color: #ffffff !important;
+    opacity: 1 !important;
+    font-weight: 600 !important;
+    text-shadow: 0 1px 0 rgba(0,0,0,0.25) !important;
+}
 [data-testid="stSidebar"] [data-testid="stFileUploader"] button {
     background: rgba(212,130,10,0.25) !important; border: 1px solid rgba(212,130,10,0.5) !important; color: var(--amber-lt) !important;
 }
@@ -203,6 +276,14 @@ html, body, [class*="css"] {
 .stButton > button:hover { background: var(--amber-lt) !important; transform: translateY(-1px) !important; }
 .stButton > button[kind="secondary"] { background: transparent !important; border: 1px solid var(--rule) !important; color: var(--ink-3) !important; }
 .stButton > button[kind="secondary"]:hover { border-color: var(--ink-3) !important; }
+/* Keep button text readable when disabled */
+.stButton > button:disabled,
+.stButton > button[disabled] {
+    color: #ffffff !important;
+    opacity: 1 !important;
+    font-weight: 700 !important;
+    text-shadow: 0 1px 0 rgba(0,0,0,0.25) !important;
+}
  
 /* ── Masthead ── */
 .masthead { border-bottom: 3px double var(--ink); padding-bottom: 1rem; margin-bottom: 0.25rem; }
