@@ -1,76 +1,107 @@
-#Actionableitems , decision , questions 
-
-from langchain_mistralai import ChatMistralAI
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import RunnablePassthrough, RunnableLambda
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-import os 
+from langchain_core.output_parsers import JsonOutputParser
+from core.rag_engine import get_llm
 
 
-def get_llm():
-    return ChatMistralAI(model = "mistral-small-latest", mistral_api_key = os.getenv("MISTRAL_API_KEY"),temperature=0.2)
-
-def split_transcript(transcript: str) -> list:
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size = 3000,
-        chunk_overlap = 200
-    )
-
-    return splitter.split_text(transcript)
-
-def build_chain(system_prompt : str):
+def extract_meeting_insights(transcript: str) -> dict:
     llm = get_llm()
-    return (
-        RunnablePassthrough() | RunnableLambda(lambda x : {"text" : x}) |ChatPromptTemplate.from_messages([
-        ("system", system_prompt),
-        ("human","{text}"),
-    ]) | llm |StrOutputParser()
-    )
 
-def extract_action_items(transcript:str)->str:
-    chain = build_chain(
-         "You are an expert meeting analyst. From the meeting transcript, "
-        "extract all action items. For each provide:\n"
-        "- Task description\n"
-        "- Owner (who is responsible)\n"
-        "- Deadline (if mentioned, else write 'Not specified')\n\n"
-        "Format as a numbered list. If none found say 'No action items found.'"
-    )
-    chunks = split_transcript(transcript)
+    prompt = ChatPromptTemplate.from_messages([
+        (
+            "system",
+            """
+You are an expert meeting and video analyst.
 
-    chunk_summaries = [chain.invoke(chunk) for chunk in chunks]
+Analyze the transcript and return ONLY valid JSON in the following format:
 
-    combined = "\n\n".join(chunk_summaries)
+{{
+  "title": "short meeting title",
+  "summary": "detailed summary",
+  "action_items": ["item1", "item2"],
+  "key_decisions": ["decision1", "decision2"],
+  "open_questions": ["question1", "question2"]
+}}
 
-    return combined 
+Requirements for the summary:
+
+Your task is to create a comprehensive, information-dense summary of the transcript.
+
+The summary should be detailed enough that a user who never watched the video can fully understand:
+
+- What was discussed
+- Why it was discussed
+- The key concepts explained
+- Important examples mentioned
+- Arguments, reasoning, and conclusions
+- Any recommendations, action items, or decisions
+
+Instructions:
+
+1. Capture ALL major topics discussed in chronological order.
+2. Explain important concepts in simple language.
+3. Include examples, case studies, stories, analogies, and demonstrations mentioned by the speaker.
+4. Preserve technical details when they are important.
+5. Do not omit important explanations for the sake of brevity.
+6. If multiple topics are discussed, create separate sections for each topic.
+7. Mention key takeaways at the end.
+8. The summary should be approximately 20–40% of the transcript length while remaining highly informative.
+9. Use clear headings and bullet points.
+10. Avoid generic statements such as "the speaker discussed several topics."
+11. Focus on delivering maximum information value.
+12. If the transcript contains educational content, explain the concepts as if teaching a student.
+13. If the transcript contains a tutorial, include the step-by-step process explained.
+14. If the transcript contains a meeting, include decisions, action items, concerns, blockers, and next steps.
+
+Output format for the summary field:
+
+# Executive Summary
+
+(2-3 paragraph overview)
+
+# Detailed Discussion
+
+## Topic 1
+- Detailed explanation
+- Important examples
+- Key insights
+
+## Topic 2
+- Detailed explanation
+- Important examples
+- Key insights
+
+(Continue for all major topics)
+
+# Key Takeaways
+
+- Takeaway 1
+- Takeaway 2
+- Takeaway 3
+- ...
+
+Requirements for action_items:
+- Include only concrete actions that someone needs to perform.
+- Return an empty list if no action items exist.
+
+Requirements for key_decisions:
+- Include important conclusions, decisions, recommendations, or final outcomes.
+- Return an empty list if none exist.
+
+Requirements for open_questions:
+- Include unanswered questions, concerns, blockers, or discussion points.
+- Return an empty list if none exist.
+
+Return JSON only.
+Do not return markdown outside the JSON.
+Do not return explanations outside the JSON.
+"""
+        ),
+        ("human", "Transcript:\n\n{transcript}")
+    ])
+
+    chain = prompt | llm | JsonOutputParser()
+
+    return chain.invoke({"transcript": transcript})
 
 
-def extract_key_decisions(transcript: str) -> str:
-    chain = build_chain(
-        "You are an expert meeting analyst. From the meeting transcript, "
-        "extract all key decisions made. Format as a numbered list. "
-        "If none found say 'No key decisions found.'"
-    )
-    chunks = split_transcript(transcript)
-
-    chunk_summaries = [chain.invoke(chunk) for chunk in chunks]
-
-    combined = "\n\n".join(chunk_summaries)
-
-    return combined
-
-
-def extract_questions(transcript: str) -> str:
-    chain = build_chain(
-        "From the meeting transcript, extract all unresolved questions "
-        "or topics needing follow-up. Format as a numbered list. "
-        "If none found say 'No open questions found.'"
-    )
-    chunks = split_transcript(transcript)
-
-    chunk_summaries = [chain.invoke(chunk) for chunk in chunks]
-
-    combined = "\n\n".join(chunk_summaries)
-
-    return combined
+    

@@ -1,26 +1,30 @@
 import os
-import uuid
 from langchain_mistralai import ChatMistralAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough, RunnableLambda
 from core.vector_store import build_vector_store, load_vector_store, get_retriever
 
+_llm = None
+
 def get_llm():
-    return ChatMistralAI(
-        model="mistral-small-latest",
-        mistral_api_key=os.getenv("MISTRAL_API_KEY"),
-        temperature=0.3,
-    )
+    global _llm
+
+    if _llm is None:
+        _llm = ChatMistralAI(
+            model="mistral-small-latest",
+            mistral_api_key=os.getenv("MISTRAL_API_KEY"),
+            temperature=0.3,
+        )
+
+    return _llm
 
 def format_docs(docs):
     return "\n\n".join([doc.page_content for doc in docs])
 
-def build_rag_chain(transcript:str):
-    
-    collection_name = f"meeting_{uuid.uuid4().hex}"
+def build_rag_chain(transcript:str, meeting_id: str):
 
-    vector_store = build_vector_store(transcript,collection_name=collection_name)
+    vector_store = build_vector_store(transcript, meeting_id)
 
     retriever = get_retriever(vector_store, k = 4)
 
@@ -58,10 +62,9 @@ Context from meeting transcript:
     return rag_chain
 
 
-def load_rag_chain():
-    collection_name = f"meeting_{uuid.uuid4().hex}"
-    vector_store = load_vector_store(collection_name=collection_name)
-    retriver = get_retriever(vector_store)
+def load_rag_chain(meeting_id: str):
+    vector_store = load_vector_store(meeting_id)
+    retriever = get_retriever(vector_store)
 
     llm = get_llm()
     prompt = ChatPromptTemplate.from_messages([
@@ -83,7 +86,7 @@ Context from meeting transcript:
 
     rag_chain = (
         {
-            "context":  retriver| RunnableLambda(format_docs),
+            "context":  retriever| RunnableLambda(format_docs),
             "question": RunnablePassthrough(),
         }
         | prompt
@@ -94,7 +97,7 @@ Context from meeting transcript:
     return rag_chain
 
 
-def ask_question(rag_chain, question:str) -> str:
+def ask_questions(rag_chain, question:str) -> str:
     print(f"Question : {question}")
     answer = rag_chain.invoke(question)
     print(f"answer :{answer}")

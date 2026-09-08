@@ -1,9 +1,10 @@
+import os
 from langchain_community.vectorstores import Chroma
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
 
-CHROMA_DIR = "vector_db"
+BASE_CHROMA_DIR = "vector_db"
 EMBEDDING_MODEL = "all-MiniLM-L6-v2"
 
 
@@ -14,12 +15,8 @@ def get_embeddings():
     )
 
 
-def build_vector_store(
-    transcript: str,
-    collection_name: str
-) -> Chroma:
-
-    print(f"Building Vector Store: {collection_name}")
+def build_vector_store(transcript: str, meeting_id: str) -> Chroma:
+    persist_dir = os.path.join(BASE_CHROMA_DIR, meeting_id)
 
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=500,
@@ -29,49 +26,34 @@ def build_vector_store(
     chunks = splitter.split_text(transcript)
 
     docs = [
-        Document(
-            page_content=chunk,
-            metadata={"chunk_index": i}
-        )
+        Document(page_content=chunk, metadata={"meeting_id": meeting_id, "chunk_index": i})
         for i, chunk in enumerate(chunks)
     ]
 
     embeddings = get_embeddings()
 
-    vector_store = Chroma.from_documents(
+    return Chroma.from_documents(
         documents=docs,
         embedding=embeddings,
-        collection_name=collection_name,
-        persist_directory=CHROMA_DIR
+        collection_name=f"meeting_{meeting_id}",
+        persist_directory=persist_dir
     )
 
-    return vector_store
 
-
-def load_vector_store(
-    collection_name: str
-) -> Chroma:
+def load_vector_store(meeting_id: str) -> Chroma:
+    persist_dir = os.path.join(BASE_CHROMA_DIR, meeting_id)
 
     embeddings = get_embeddings()
 
-    vector_store = Chroma(
-        collection_name=collection_name,
+    return Chroma(
+        collection_name=f"meeting_{meeting_id}",
         embedding_function=embeddings,
-        persist_directory=CHROMA_DIR
+        persist_directory=persist_dir
     )
 
-    return vector_store
 
-
-def get_retriever(
-    vector_store: Chroma,
-    k: int = 4
-):
-
+def get_retriever(vector_store: Chroma, k: int = 4):
     return vector_store.as_retriever(
         search_type="similarity",
         search_kwargs={"k": k}
     )
-
-
-
