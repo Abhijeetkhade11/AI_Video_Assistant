@@ -1,23 +1,39 @@
 import os
 from langchain_mistralai import ChatMistralAI
+from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough, RunnableLambda
 from core.vector_store import build_vector_store, load_vector_store, get_retriever
 
 _llm = None
+_llm_json = None
 
 def get_llm():
     global _llm
 
     if _llm is None:
-        _llm = ChatMistralAI(
-            model="mistral-small-latest",
-            mistral_api_key=os.getenv("MISTRAL_API_KEY"),
+        _llm = ChatGroq(
+            model="openai/gpt-oss-20b",
+            groq_api_key=os.getenv("GROQ_API_KEY"),
             temperature=0.3,
         )
 
+
     return _llm
+
+def get_llm_json():
+    """JSON-mode LLM — used wherever structured JSON output is required."""
+    global _llm_json
+    if _llm_json is None:
+        _llm_json = ChatGroq(
+            model="openai/gpt-oss-20b",
+            groq_api_key=os.getenv("GROQ_API_KEY"),
+            temperature=0.3,
+            model_kwargs={"response_format": {"type": "json_object"}},
+        )
+    return _llm_json
+
 
 def format_docs(docs):
     return "\n\n".join([doc.page_content for doc in docs])

@@ -1,10 +1,10 @@
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
-from core.rag_engine import get_llm
+from core.rag_engine import get_llm_json
 
 
 def extract_meeting_insights(transcript: str) -> dict:
-    llm = get_llm()
+    llm = get_llm_json()
 
     prompt = ChatPromptTemplate.from_messages([
         (
@@ -101,7 +101,13 @@ Do not return explanations outside the JSON.
 
     chain = prompt | llm | JsonOutputParser()
 
-    return chain.invoke({"transcript": transcript})
+    result = chain.invoke({"transcript": transcript})
+
+    # Repair any double-escaped newlines the model may still produce
+    if isinstance(result.get("summary"), str):
+        result["summary"] = result["summary"].replace("\\n", "\n")
+
+    return result
 
 
     

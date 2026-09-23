@@ -1,0 +1,295 @@
+# LensAI — AI Video Meeting Assistant
+
+LensAI is a full-stack meeting intelligence application that turns a YouTube
+recording or local audio/video file into a searchable meeting workspace.
+It transcribes the recording, generates structured insights, stores the
+transcript for retrieval-augmented question answering, and provides a React
+dashboard for reviewing and chatting with each meeting.
+
+The project is split into:
+
+- **Frontend:** React 19, Vite, Tailwind CSS, React Router, and Axios
+- **Backend:** Python, FastAPI, SQLAlchemy, JWT authentication, Whisper,
+  LangChain, ChromaDB, and local file-based storage
+
+## Features
+
+- User registration and JWT-based login
+- Submit a YouTube URL or local media path for processing
+- Speech-to-text transcription with Whisper or the configured speech-to-text
+  provider
+- Meeting title, summary, action items, key decisions, and open questions
+- Persistent meeting history backed by SQLite
+- RAG-based questions and answers over a meeting transcript
+- Search, rename, and delete saved meetings
+- Light and dark dashboard modes
+- Interactive FastAPI documentation at `/docs`
+
+## How It Works
+
+1. A user creates an account or signs in.
+2. The frontend sends a YouTube URL or local file path to the FastAPI backend.
+3. The backend downloads/converts the media when necessary and transcribes it.
+4. LangChain-based processing extracts meeting insights.
+5. The transcript is split, embedded, and persisted in ChromaDB.
+6. Meeting metadata and generated insights are stored in SQLite.
+7. The frontend displays the meeting and can send follow-up questions to the
+   RAG pipeline.
+
+## Project Structure
+
+```text
+AI_Video_Assistant/
+├── backend/
+│   ├── app.py                 # FastAPI application entry point
+│   ├── main.py                # Audio/video processing pipeline
+│   ├── pyproject.toml          # uv project metadata and dependencies
+│   ├── uv.lock                 # Locked dependency versions
+│   ├── requirements.txt        # pip-compatible dependency list
+│   ├── auth/                   # Password hashing and JWT helpers
+│   ├── core/                   # Transcription, extraction, RAG, and vectors
+│   ├── database/               # SQLAlchemy engine and sessions
+│   ├── models/                 # Database models
+│   ├── routes/                 # Auth, meeting, and chat endpoints
+│   ├── utils/                  # Media download and audio processing helpers
+│   ├── vector_db/              # ChromaDB persistence directory
+│   └── uploads/                # Local processing files
+├── frontend/
+│   ├── src/
+│   │   ├── api/               # Axios API client
+│   │   ├── components/        # Shared UI components
+│   │   ├── context/           # Authentication state
+│   │   └── pages/             # Landing, auth, and dashboard screens
+│   ├── package.json
+│   └── vite.config.js
+└── README.md
+```
+
+## Prerequisites
+
+Install the following before starting:
+
+- Python **3.10 or newer**
+- Node.js **18 or newer** and npm
+- FFmpeg available on your system `PATH`
+- A Mistral or Groq API key for LLM-powered extraction and chat
+- A CUDA-capable GPU is optional; Whisper can also run on CPU
+
+### Installing FFmpeg
+
+On Windows, install FFmpeg with one of the following options:
+
+```powershell
+winget install Gyan.FFmpeg
+```
+
+After installation, verify it is available:
+
+```powershell
+ffmpeg -version
+```
+
+For macOS or Linux, install FFmpeg with your platform package manager, then
+run the same verification command.
+
+## Backend Setup
+
+Open a terminal in the repository root and run:
+
+### 1. Create and activate a virtual environment
+
+Windows PowerShell:
+
+```powershell
+cd backend
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+```
+
+macOS/Linux:
+
+```bash
+cd backend
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+### 2. Install Python dependencies
+
+#### Recommended: uv
+
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/) and run
+the following from the `backend` directory:
+
+```powershell
+uv sync
+```
+
+This reads `pyproject.toml`, uses the committed `uv.lock`, and creates or
+updates the backend virtual environment. Run the API with:
+
+```powershell
+uv run uvicorn app:app --reload --host 127.0.0.1 --port 8000
+```
+
+#### Alternative: pip
+
+The repository also includes a pip-compatible requirements file:
+
+```bash
+pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+The requirements file contains the same direct dependencies as
+`pyproject.toml`, but pip installs the newest versions that satisfy the
+minimum version constraints. Use `uv sync` when you need the exact versions
+recorded in `uv.lock`.
+
+For a CPU-only PyTorch installation on Windows, use the appropriate official
+PyTorch wheel index if the default installation does not work:
+
+```powershell
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+```
+
+For NVIDIA CUDA support, use the installation command generated by the
+[official PyTorch selector](https://pytorch.org/get-started/locally/).
+
+### 3. Configure environment variables
+
+Create `backend/.env`. Do not commit this file or share API keys.
+
+```dotenv
+SECRET_KEY=replace-with-a-long-random-secret
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=10080
+DATABASE_URL=sqlite:///./app.db
+MISTRAL_API_KEY=your-mistral-api-key
+GROQ_API_KEY=your-groq-api-key
+WHISPER_MODEL=small
+SARVAM_API_KEY=your-sarvam-api-key
+SARVAM_STT_MODEL=saaras:v2.5
+```
+
+Use the provider keys required by the pipeline configuration. Keep unused
+provider keys empty or remove them if the corresponding provider is not used.
+
+### 4. Start the FastAPI server
+
+From the `backend` directory, with the virtual environment active:
+
+```powershell
+uvicorn app:app --reload --host 127.0.0.1 --port 8000
+```
+
+If you installed with uv, use `uv run uvicorn ...` as shown above so the
+command runs in the locked project environment.
+
+The backend will be available at:
+
+- API root: <http://127.0.0.1:8000/>
+- Swagger UI: <http://127.0.0.1:8000/docs>
+- ReDoc: <http://127.0.0.1:8000/redoc>
+
+The SQLite database and ChromaDB files are created/updated locally when the
+backend runs.
+
+## Frontend Setup
+
+Open a second terminal:
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+Open the URL printed by Vite, normally
+<http://localhost:5173/>.
+
+The Axios client currently targets `http://127.0.0.1:8000`, so start the
+backend on port 8000 before using the dashboard. The backend CORS configuration
+allows the Vite development origin `http://localhost:5173`.
+
+### Frontend commands
+
+```bash
+npm run dev       # Start the Vite development server
+npm run build     # Create a production build
+npm run preview   # Preview the production build locally
+npm run lint      # Run ESLint
+```
+
+## API Overview
+
+All meeting and chat endpoints require a bearer token obtained from login.
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| `POST` | `/auth/signup` | Register a user |
+| `POST` | `/auth/login` | Get a JWT access token |
+| `GET` | `/auth/me` | Get the current user |
+| `POST` | `/meetings/process` | Process a YouTube URL or local media path |
+| `GET` | `/meetings/` | List the current user's meetings |
+| `GET` | `/meetings/{meeting_id}` | Get meeting details and insights |
+| `PATCH` | `/meetings/{meeting_id}/rename` | Rename a meeting |
+| `DELETE` | `/meetings/{meeting_id}` | Delete a meeting |
+| `POST` | `/meetings/{meeting_id}/ask` | Ask a question about a meeting |
+| `GET` | `/meetings/{meeting_id}/chats` | Get saved meeting questions |
+
+## Processing Inputs
+
+The dashboard accepts:
+
+- A public YouTube URL, downloaded with `yt-dlp`
+- A local audio/video file path accessible to the backend process
+
+Supported language values currently used by the UI are `english` and
+`hinglish`. Processing can take time because transcription, embeddings, and
+LLM calls happen synchronously.
+
+## Troubleshooting
+
+### `ffmpeg` is not found
+
+Install FFmpeg and ensure its `bin` directory is on `PATH`. Restart the
+terminal after changing `PATH`.
+
+### PyTorch, Whisper, or model download errors
+
+Install the PyTorch build that matches your operating system and hardware.
+The first transcription can also download model files and may require
+additional disk space.
+
+### The frontend cannot reach the backend
+
+Confirm both servers are running, check that the backend is listening on port
+8000, and open <http://127.0.0.1:8000/> directly in a browser. The frontend
+expects the backend at `http://127.0.0.1:8000`.
+
+### API key or environment errors
+
+Confirm that `backend/.env` exists, uses the exact variable names shown above,
+and that the backend was restarted after editing it.
+
+### Existing local data
+
+The application stores local state in `backend/app.db`, `backend/vector_db/`,
+and `backend/uploads/`. Back up any meeting data before removing these
+directories. They are local runtime artifacts and should not be committed.
+
+## Security Notes
+
+- Never commit `.env` files, API keys, JWT secrets, or generated database data.
+- Replace development secrets before deploying.
+- Restrict CORS origins and use HTTPS in production.
+- Move API and database configuration to deployment environment variables.
+- The current processing pipeline is designed for local development and may
+  need background jobs, upload validation, rate limiting, and stronger
+  production logging before public deployment.
+
+## License
+
+No license has been included yet. Add a license file before distributing the
+project publicly.

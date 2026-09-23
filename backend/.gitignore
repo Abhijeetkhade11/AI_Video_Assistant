@@ -5,4 +5,8 @@ __pycache__/
 node_modules/
 vector_db/
 downloades/
+uploads/
+*.db
+*.sqlite
+*.sqlite3
 .env.*
